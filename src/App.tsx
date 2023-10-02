@@ -1,10 +1,9 @@
-import { useState, useEffect, useContext } from 'react';
+import { useState, useContext, useMemo } from 'react';
 import { Input } from '@/components/ui/input.tsx';
 import { Header } from '@/components/ui/Header.tsx';
 import { CityListCard } from '@/components/CityListCard.tsx';
 import { TemperatureUnitSelect } from '@/components/TemperatureUnitSelect.tsx';
 import { CityType } from './Types/types';
-import { filterCityHandler } from './lib/utils';
 import { UseQueryResult, useQuery } from 'react-query';
 import { QUERY_KEY_WEATHER, fetchWeatherData } from './lib/weather';
 import FavoritesContext from './store/favorites-context';
@@ -21,27 +20,28 @@ export type TDataItem = {
 function App() {
   const ctx = useContext(FavoritesContext);
   const [units, setUnits] = useState<TemperatureUnit>('CELSIUS');
-  const [fiteredCities, setFiteredCities] = useState<CityType[]>([]);
-  const [favoriteCities, setFavoriteCities] = useState<CityType[]>([]);
   const [searchValue, setSearchValue] = useState('');
   const {
     data: citiesData,
     isLoading,
     isError,
+    isSuccess,
   }: UseQueryResult<CityType[]> = useQuery(QUERY_KEY_WEATHER, fetchWeatherData);
 
-  useEffect(() => {
-    if (citiesData) {
-      filterCityHandler({ citiesData, searchValue, setFiteredCities });
-    }
-  }, [citiesData, searchValue]);
+  const fiteredCities = isSuccess
+    ? citiesData.filter((item) =>
+        item.city.toLowerCase().includes(searchValue.toLowerCase())
+      )
+    : [];
 
-  useEffect(() => {
-    const favArr = citiesData?.filter((city) =>
-      ctx.favArr.includes(city.id)
-    ) as CityType[];
-    setFavoriteCities(favArr);
-  }, [citiesData, ctx.favArr]);
+  const favoriteCities = useMemo(
+    () =>
+      isSuccess
+        ? citiesData.filter((city) => ctx.favArr.includes(city.id))
+        : [],
+    [citiesData, ctx.favArr, isSuccess]
+  );
+
 
   return (
     <>
